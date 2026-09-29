@@ -12,6 +12,15 @@ use std::{
   time::{self, Duration},
 };
 
+pub struct FireworksConfig {
+  manual: bool,
+}
+impl FireworksConfig {
+  pub fn new(manual: bool) -> Self {
+    Self { manual }
+  }
+}
+
 pub struct Firework {
   pos: (u16, u16),
   color: crossterm::style::Color,
@@ -112,9 +121,9 @@ impl Entity for Point {
   }
 }
 
-const SPAWN_TIME: Duration = Duration::from_millis(1);
+const SPAWN_TIME: Duration = Duration::from_millis(100);
 
-pub fn run() -> io::Result<()> {
+pub fn run(fc: FireworksConfig) -> io::Result<()> {
   let mut last_frame = time::Instant::now();
   let mut scene = Scene::new()?;
   let mut timer = Duration::ZERO;
@@ -124,24 +133,25 @@ pub fn run() -> io::Result<()> {
     let last_frame_delta = start.duration_since(last_frame);
     last_frame = start;
 
-    timer += last_frame_delta;
-    while timer >= SPAWN_TIME {
-      timer -= SPAWN_TIME;
-      let pos = (
-        random_range(0..scene.size().0),
-        random_range(0..scene.size().1),
-      );
-      let mut firework = Firework::new(pos, crossterm::style::Color::Reset);
-      firework.true_random_color();
-
-      let entities = firework.explode();
-      scene.append_objs(entities);
+    if !fc.manual {
+      timer += last_frame_delta;
+      while timer >= SPAWN_TIME {
+        timer -= SPAWN_TIME;
+      }
     }
 
     if crossterm::event::poll(Duration::ZERO)? {
       if let Event::Key(key_event) = event::read()? {
-        if key_event.is_press() && key_event.code == KeyCode::Char('q') {
-          break 'main;
+        if key_event.is_press() {
+          match key_event.code {
+            KeyCode::Char('q') => break 'main,
+            KeyCode::Enter => {
+              if fc.manual {
+                shoot_firework(&mut scene);
+              }
+            }
+            _ => (),
+          };
         }
       }
     }
@@ -156,4 +166,16 @@ pub fn run() -> io::Result<()> {
   }
 
   Ok(())
+}
+
+fn shoot_firework(scene: &mut Scene) {
+  let pos = (
+    random_range(0..scene.size().0),
+    random_range(0..scene.size().1),
+  );
+  let mut firework = Firework::new(pos, crossterm::style::Color::Reset);
+  firework.true_random_color();
+
+  let entities = firework.explode();
+  scene.append_objs(entities);
 }

@@ -9,6 +9,8 @@ use crossterm::{
 };
 use std::io::{self, stdout};
 
+use crate::fireworks::FireworksConfig;
+
 struct TermGuard;
 impl TermGuard {
   fn new() -> io::Result<Self> {
@@ -34,5 +36,5 @@ fn main() -> io::Result<()> {
 
 fn run() -> io::Result<()> {
   let _guard = TermGuard::new();
-  fireworks::run()
+  fireworks::run(FireworksConfig::new(true))
 }
