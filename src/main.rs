@@ -36,5 +36,5 @@ fn main() -> io::Result<()> {
 
 fn run() -> io::Result<()> {
   let _guard = TermGuard::new();
-  fireworks::run(FireworksConfig::new(true, true))
+  fireworks::run(FireworksConfig::new(false, true))
 }

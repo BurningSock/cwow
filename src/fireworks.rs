@@ -141,6 +141,7 @@ pub fn run(fc: FireworksConfig) -> io::Result<()> {
       timer += last_frame_delta;
       while timer >= SPAWN_TIME {
         timer -= SPAWN_TIME;
+        shoot_firework(&mut scene, &fc);
       }
     }
 
