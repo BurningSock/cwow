@@ -14,10 +14,14 @@ use std::{
 
 pub struct FireworksConfig {
   manual: bool,
+  true_random: bool,
 }
 impl FireworksConfig {
-  pub fn new(manual: bool) -> Self {
-    Self { manual }
+  pub fn new(manual: bool, true_random: bool) -> Self {
+    Self {
+      manual,
+      true_random,
+    }
   }
 }
 
@@ -147,7 +151,7 @@ pub fn run(fc: FireworksConfig) -> io::Result<()> {
             KeyCode::Char('q') => break 'main,
             KeyCode::Enter => {
               if fc.manual {
-                shoot_firework(&mut scene);
+                shoot_firework(&mut scene, &fc);
               }
             }
             _ => (),
@@ -168,14 +172,17 @@ pub fn run(fc: FireworksConfig) -> io::Result<()> {
   Ok(())
 }
 
-fn shoot_firework(scene: &mut Scene) {
+fn shoot_firework(scene: &mut Scene, fc: &FireworksConfig) {
   let pos = (
     random_range(0..scene.size().0),
     random_range(0..scene.size().1),
   );
   let mut firework = Firework::new(pos, crossterm::style::Color::Reset);
-  firework.true_random_color();
-
+  if fc.true_random {
+    firework.true_random_color();
+  } else {
+    firework.random_color();
+  }
   let entities = firework.explode();
   scene.append_objs(entities);
 }
