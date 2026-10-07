@@ -9,7 +9,7 @@ use std::{
   io::{self, Write},
 };
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, PartialEq)]
 struct Cell {
   c: char,
   fg: Color,
