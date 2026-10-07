@@ -3,6 +3,7 @@ use crossterm::{
   queue,
   style::{Color, PrintStyledContent, Stylize},
 };
+use itertools::iproduct;
 use std::{
   char,
   io::{self, Write},
@@ -67,24 +68,22 @@ impl Buffer {
     let mut stdout = io::stdout().lock();
     let old_max_index = (old.cols as usize).saturating_mul(old.rows as usize);
 
-    for row in 0..self.rows {
-      for col in 0..self.cols {
-        let index = self.get_index((col, row));
-        let cell = &self.data[index];
+    for (row, col) in iproduct!(0..self.rows, 0..self.cols) {
+      let index = self.get_index((col, row));
+      let cell = &self.data[index];
 
-        let changed = old
-          .data
-          .get(index)
-          .map_or(true, |old_cell| *old_cell != *cell);
-        let out_of_bounds = index >= old_max_index;
+      let changed = old
+        .data
+        .get(index)
+        .map_or(true, |old_cell| *old_cell != *cell);
+      let out_of_bounds = index >= old_max_index;
 
-        if out_of_bounds || changed {
-          queue!(
-            stdout,
-            MoveTo(col, row),
-            PrintStyledContent(cell.c.with(cell.fg).on(cell.bg))
-          )?;
-        }
+      if out_of_bounds || changed {
+        queue!(
+          stdout,
+          MoveTo(col, row),
+          PrintStyledContent(cell.c.with(cell.fg).on(cell.bg))
+        )?;
       }
     }
 
