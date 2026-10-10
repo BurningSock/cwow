@@ -1,6 +1,8 @@
 mod engine;
 mod fireworks;
 
+use crate::fireworks::FireworksConfig;
+use clap::{Parser, Subcommand};
 use crossterm::{
   self,
   cursor::{Hide, Show},
@@ -8,8 +10,6 @@ use crossterm::{
   terminal::{EnterAlternateScreen, LeaveAlternateScreen},
 };
 use std::io::{self, stdout};
-
-use crate::fireworks::FireworksConfig;
 
 struct TermGuard;
 impl TermGuard {
@@ -30,11 +30,36 @@ impl Drop for TermGuard {
   }
 }
 
-fn main() -> io::Result<()> {
-  run()
+#[derive(Parser)]
+#[command(version, about = "A collection of simple console toys written in Rust", long_about = None)]
+struct Cli {
+  #[command(subcommand)]
+  command: Commands,
 }
 
-fn run() -> io::Result<()> {
-  let _guard = TermGuard::new();
-  fireworks::run(FireworksConfig::new(false, true))
+#[derive(Subcommand)]
+enum Commands {
+  /// Shoot fireworks in your terminal
+  Fireworks {
+    /// Use <Enter> to manually shoot fireworks
+    #[arg(short, long)]
+    manual: bool,
+
+    /// Use more than the 6 colors
+    #[arg(short, long)]
+    true_random: bool,
+  },
+}
+
+fn main() -> io::Result<()> {
+  let cli = Cli::parse();
+  match &cli.command {
+    Commands::Fireworks {
+      manual,
+      true_random,
+    } => {
+      let _guard = TermGuard::new();
+      fireworks::run(FireworksConfig::new(*manual, *true_random))
+    }
+  }
 }
