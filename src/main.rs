@@ -45,7 +45,7 @@ enum Commands {
     #[arg(short, long)]
     manual: bool,
 
-    /// Use more than the 6 colors
+    /// Use more than 6 colors
     #[arg(short, long)]
     true_random: bool,
   },
