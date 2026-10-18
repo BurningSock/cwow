@@ -1,7 +1,10 @@
 mod engine;
 mod fireworks;
 
-use crate::fireworks::FireworksConfig;
+use crate::{
+  engine::Scene,
+  fireworks::{FireworksConfig, FireworksScene},
+};
 use clap::{Parser, Subcommand};
 use crossterm::{
   self,
@@ -59,7 +62,8 @@ fn main() -> io::Result<()> {
       true_random,
     } => {
       let _guard = TermGuard::new();
-      fireworks::run(FireworksConfig::new(*manual, *true_random))
+      let mut scene = FireworksScene::new(FireworksConfig::new(*manual, *true_random))?;
+      scene.run()
     }
   }
 }
