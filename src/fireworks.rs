@@ -1,4 +1,4 @@
-use crate::engine::{self, Entity, Scene, buffer::Buffer};
+use crate::engine::{self, Commands, Entity, Scene, SceneContext, buffer::Buffer};
 use crossterm::{
   event::{self, Event, KeyCode},
   style::Color,
@@ -11,6 +11,85 @@ use std::{
   thread::sleep,
   time::{self, Duration},
 };
+
+pub struct FireworksScene {
+  ctx: SceneContext,
+  config: FireworksConfig,
+}
+impl FireworksScene {
+  pub fn new(config: FireworksConfig) -> io::Result<Self> {
+    let ctx = SceneContext::new()?;
+    Ok(Self { ctx, config })
+  }
+
+  fn shoot_firework(&mut self) {
+    let ctx = self.context();
+    let pos = (random_range(0..ctx.size().0), random_range(0..ctx.size().1));
+    let mut firework = Firework::new(pos, crossterm::style::Color::Reset);
+
+    if self.config.true_random {
+      firework.true_random_color();
+    } else {
+      firework.random_color();
+    }
+
+    let entities = firework.explode();
+    for e in entities {
+      self.context().execute_cmd(Commands::AddEntity(e));
+    }
+  }
+}
+impl Scene for FireworksScene {
+  fn context(&mut self) -> &mut SceneContext {
+    &mut self.ctx
+  }
+
+  fn run(&mut self) -> io::Result<()> {
+    let mut last_frame = time::Instant::now();
+    let mut timer = Duration::ZERO;
+
+    'main: loop {
+      let start = time::Instant::now();
+      let last_frame_delta = start.duration_since(last_frame);
+      last_frame = start;
+
+      if !self.config.manual {
+        timer += last_frame_delta;
+        while timer >= SPAWN_TIME {
+          timer -= SPAWN_TIME;
+          self.shoot_firework();
+        }
+      }
+
+      // handle input
+      if crossterm::event::poll(Duration::ZERO)? {
+        if let Event::Key(key_event) = event::read()? {
+          if key_event.is_press() {
+            match key_event.code {
+              KeyCode::Char('q') => break 'main,
+              KeyCode::Enter => {
+                if self.config.manual {
+                  self.shoot_firework();
+                }
+              }
+              _ => (),
+            };
+          }
+        }
+      }
+
+      self.update(last_frame_delta.as_secs_f64());
+      self.context().render()?;
+
+      let delta = start.elapsed();
+      if !engine::REFRESH_RATE.saturating_sub(delta).is_zero() {
+        sleep(engine::REFRESH_RATE.saturating_sub(delta));
+      }
+    }
+
+    Ok(())
+  }
+}
 
 pub struct FireworksConfig {
   manual: bool,
@@ -86,7 +165,7 @@ struct Point {
   acceleration: (f64, f64),
 }
 impl Entity for Point {
-  fn update(&mut self, delta: f64) {
+  fn update(&mut self, delta: f64) -> Option<Vec<Commands>> {
     self.lifetime -= delta;
     self.velocity = (
       self.velocity.0.add(self.acceleration.0.mul(delta)),
@@ -97,8 +176,9 @@ impl Entity for Point {
       self.position.0.add(self.velocity.0.mul(delta)),
       self.position.1.add(self.velocity.1.mul(delta)),
     );
-  }
 
+    Some(vec![Commands::Update])
+  }
   fn draw(&self, buffer: &mut Buffer) {
     let (col, row) = self.position;
 
@@ -126,64 +206,3 @@ impl Entity for Point {
 }
 
 const SPAWN_TIME: Duration = Duration::from_millis(100);
-
-pub fn run(fc: FireworksConfig) -> io::Result<()> {
-  let mut last_frame = time::Instant::now();
-  let mut scene = Scene::new()?;
-  let mut timer = Duration::ZERO;
-
-  'main: loop {
-    let start = time::Instant::now();
-    let last_frame_delta = start.duration_since(last_frame);
-    last_frame = start;
-
-    if !fc.manual {
-      timer += last_frame_delta;
-      while timer >= SPAWN_TIME {
-        timer -= SPAWN_TIME;
-        shoot_firework(&mut scene, &fc);
-      }
-    }
-
-    if crossterm::event::poll(Duration::ZERO)? {
-      if let Event::Key(key_event) = event::read()? {
-        if key_event.is_press() {
-          match key_event.code {
-            KeyCode::Char('q') => break 'main,
-            KeyCode::Enter => {
-              if fc.manual {
-                shoot_firework(&mut scene, &fc);
-              }
-            }
-            _ => (),
-          };
-        }
-      }
-    }
-
-    scene.update(last_frame_delta.as_secs_f64());
-    scene.render()?;
-
-    let delta = start.elapsed();
-    if !engine::REFRESH_RATE.saturating_sub(delta).is_zero() {
-      sleep(engine::REFRESH_RATE.saturating_sub(delta));
-    }
-  }
-
-  Ok(())
-}
-
-fn shoot_firework(scene: &mut Scene, fc: &FireworksConfig) {
-  let pos = (
-    random_range(0..scene.size().0),
-    random_range(0..scene.size().1),
-  );
-  let mut firework = Firework::new(pos, crossterm::style::Color::Reset);
-  if fc.true_random {
-    firework.true_random_color();
-  } else {
-    firework.random_color();
-  }
-  let entities = firework.explode();
-  scene.append_objs(entities);
-}
